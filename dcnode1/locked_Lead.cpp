@@ -71,7 +71,10 @@ void lead_to_lead_push_recv_update_store(vector<string> v){
 							/*cross_lead.writeQueue(p[0],p[1]);*/
 
 							mtx.lock();
-							store[stoi(p[0])] = stoi(p[1]);
+							
+							if(p.size()!=0 && !p[0].empty() && !p[1].empty())
+								store[stoi(p[0])] = stoi(p[1]);
+
 							mtx.unlock();
 
 							repl_1.writeQueue(p[0],p[1]);
@@ -406,7 +409,8 @@ string Leader_read(string key,string in){
 
 	/* Lock store 	*/
 	mtx.lock();
-	cout<<"\nLeader: Local The Read value is:"<<store[stoi(key)];
+	if(!key.empty())							
+		cout<<"\nLeader: Local The Read value is:"<<store[stoi(key)];
 	mtx.unlock();
 	/* Unlock store */
 
@@ -422,8 +426,10 @@ string Leader_write(string key,string value,string in)
 
 	/* Lock store 	*/
 	mtx.lock();
-	store[stoi(key)] = stoi(value);
-	cout<<"\nLeader: Local The Write value is:"<<store[stoi(key)];
+	if(!key.empty() && !value.empty()){
+		store[stoi(key)] = stoi(value);
+		cout<<"\nLeader: Local The Write value is:"<<store[stoi(key)];
+	}
 	mtx.unlock();
 	/* Unlock store */
 
