@@ -18,6 +18,7 @@ _queue cross_lead;
 string _queue::readQueue(){
 
 	string result="";
+
 	/* Lock Queue Here */
 	m.lock();
 	while(!q.empty()){
@@ -27,6 +28,7 @@ string _queue::readQueue(){
 	}
 	m.unlock();
 	/* Unlock Queue Here */
+	
 	return result;
 }
 void _queue::writeQueue(string key,string value){
@@ -58,6 +60,29 @@ void update_store(string result){
 string Leader_read(string key,string in);
 string Leader_write(string key,string value,string in);
 
+void lead_to_lead_push_recv_update_store(vector<string> v){
+					
+						/* Result will have one extra $ (or not dollar sign) at the end ???*/
+
+						for(int i=0;i<v.size();i++){
+
+							std::vector<string> p=splitString(v[i],"#");
+										
+							/*cross_lead.writeQueue(p[0],p[1]);*/
+
+							mtx.lock();
+							store[stoi(p[0])] = stoi(p[1]);
+							mtx.unlock();
+
+							repl_1.writeQueue(p[0],p[1]);
+							repl_2.writeQueue(p[0],p[1]);	
+
+							cout<<"\nLead:lead_to_lead_push_recv_update_store: Received Writes";
+						}
+
+						return;
+						/* Read Writes from Different DC-Leader */
+}
 
 
 class ClientSocket{
@@ -270,7 +295,7 @@ class ServerSocket_RDWR{
 					repl_1.writeQueue(v[1],v[2]);
 					repl_2.writeQueue(v[1],v[2]);
 
-					/* For variation 7, Send to Leader of secondary DC */;
+					/* For variation 7, Send to Leader of secondary DC */
 					cross_lead.writeQueue(v[1],v[2]);
 
 				} else {
@@ -287,6 +312,83 @@ class ServerSocket_RDWR{
 
 	}
 	~ServerSocket_RDWR(){
+
+		if(close(sockfd) != 0)
+			cout<<"Server-sockfd closing failed!"<<endl;
+		else
+			cout<<"Server-sockfd in Read/Write successfully closed!"<<endl;
+	}
+	
+};
+class ServerSocket_LeadRecv{
+	public:
+	int sockfd;
+	struct sockaddr_in my_addr;
+	/* connector’s address information */
+	struct sockaddr_in their_addr;
+	int addr_len, numbytes;
+	char buf[10000];
+	
+	ServerSocket_LeadRecv(int port_no){
+		numbytes=0;
+		my_addr.sin_family = AF_INET;			/* Short, network byte order 		*/
+		my_addr.sin_port = htons(port_no);		/* Automatically fill with my IP 	*/
+		my_addr.sin_addr.s_addr = INADDR_ANY;	/* Zero the rest of the struct 		*/
+		memset(&(my_addr.sin_zero), '\0', 8);
+
+		if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+			cout<<"Server-socket() sockfd error lol!"<<endl;
+			exit(1);
+		} else {
+			cout<<"Server-socket() in Read/Write sockfd is OK.."<<endl;
+		
+		}
+		
+		if(::bind(sockfd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr)) <0)
+		{
+			cout<<"Server-bind() error !"<<endl;
+			exit(1);
+		} else {
+			cout<<"Server-bind() is OK.."<<endl;
+		}
+		addr_len = sizeof(struct sockaddr);
+	}
+	void lead_to_lead_recv(){
+	    cout<<"\nLeader  receiving from L1\n";
+	    while(1){
+
+		while((numbytes=recvfrom(sockfd, buf, MAXBUFLEN-1, 0, 
+				(struct sockaddr *)&their_addr, (socklen_t*)&addr_len))!=-1) {
+
+			    string result="";	    		
+	    		buf[numbytes] = '\0';
+				result=result+string(buf);
+				
+				vector<string> v=splitString(result,"$");
+				cout<<"\n Receiving Request...";
+
+				/* Read/Write from/to this node*/
+				/* Send to one of the replica also to achieve Quorum */
+				
+				string response = "Written successfully";
+				
+				if(!result.empty() && result[0]!='$' && v.size() !=0){
+
+					/* Actually send the request to Repl Node also */
+					lead_to_lead_push_recv_update_store(v);
+
+				} else {
+					/* Drop the Request */
+				}
+
+				strcpy(buf, response.c_str());
+				numbytes = sendto(sockfd,buf, strlen(buf), 0,(struct sockaddr *)&their_addr,sizeof(struct sockaddr));
+       				if (numbytes  < 0) cout<<"\nFailed to send";
+			} 
+	}
+
+	}
+	~ServerSocket_LeadRecv(){
 
 		if(close(sockfd) != 0)
 			cout<<"Server-sockfd closing failed!"<<endl;
@@ -341,6 +443,8 @@ void periodic_check_from_node(int port){
 	
 }
 void lead_to_lead_push(int port, string ip){
+	
+	string result="";
 	while(1){
 
 		/* This functon Sleep in microseconds */
@@ -351,13 +455,18 @@ void lead_to_lead_push(int port, string ip){
 		string str = cross_lead.readQueue();
 		
 		/*  Send Changes to Leader in Secondary DataCenter */
-		c.send_request(str);
-
+		result = c.send_request(str);
 	}
+
 }
 void lead_to_lead_push_recv(int port){
 
+	usleep(1000);
+	ServerSocket_LeadRecv s(port);
+	s.lead_to_lead_recv();
+
 }
+
 int main(){
 	cout<<"\n Leader Node : 1 started ..";
 	

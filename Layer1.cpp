@@ -76,10 +76,10 @@ class ClientSocket{
 			string send_request(string str){
 
 				strcpy(buffer, str.c_str());
-				printf("\nsending --> %s",buffer);
+				printf("\nsending --> %s\n",buffer);
 				if((numbytes = sendto(sockfd, buffer, strlen(buffer), 0, 
 				 	(struct sockaddr *)&their_addr, sizeof(struct sockaddr))) == -1) {
-					cout<<"Client-sendto() error !"<<endl;
+					cout<<"Client-sendto() error !\n"<<endl;
 					exit(1);
 				}
 				else {
@@ -94,6 +94,7 @@ class ClientSocket{
 					cout<<"sent "<<numbytes<<" bytes to "<<inet_ntoa(their_addr.sin_addr)<<endl;
 					return result;
 				}
+				cout<<"\nL1:Receive Check\n";
 				return NULL;
 
 			}
@@ -102,7 +103,7 @@ class ClientSocket{
 			/* Closing UDP socket */
 
 				if (close(sockfd) != 0)
-					cout<<"Client-sockfd closing is failed!"<<endl;
+					cout<<"Client-sockfd closing is failed!\n"<<endl;
 				else
 					cout<<"Client-sockfd successfully closed!"<<endl;
 			}
@@ -162,42 +163,44 @@ class ServerSocket{
 
 				/* Even-numbered requests would go to DC1 and odd-numbered to DC2*/
 				
-//				string _ip_DC1 = config_read((stoi(v[1]) %2==0)? "DC1_LEAD_IP" : "DC2_LEAD_IP");
 				string _ip_DC1 = _local_config_read("DC1_LEAD_IP");
 				string _ip_DC2 = _local_config_read("DC2_LEAD_IP");
 
-				ClientSocket c1(_Lead_Port_DC1,_ip_DC1);
-				ClientSocket c2(_Lead_Port_DC2,_ip_DC2);
-
-				string response_DC1="";
-				string response_DC2="";
+				string response="";
 
 				if(v[0]=="RD"){
 
-					/* Send Synchronous writes to Leaders in all the DataCenters */
-					response_DC1 = response_DC1 + c1.send_request(result);		
-					response_DC2 = response_DC2 + c2.send_request(result);		
+					if(stoi(v[1])%2==0){
+						ClientSocket c(_Lead_Port_DC1,_ip_DC1);
+						response = c.send_request(result);
+						cout<<"\nL1:The Read value is:"<<response;
+					} else {
+						ClientSocket c(_Lead_Port_DC2,_ip_DC2);
+						response = c.send_request(result);
+						cout<<"\nL1:The Read value is:"<<response;
+					}
 					
 
-					response_DC1 = response_DC1 + response_DC2;
-
-					cout<<"\nL1:The Read value is:"<<response_DC1;
 					/* Actually Forward the request to Leader */
-					/*response = response + to_string(m[stoi(v[1])]);*/
 				} else if (v[0]=="WR"){
-					response_DC1 = response_DC1 + c1.send_request(result);		
-					response_DC2 = response_DC2 + c2.send_request(result);		
+
+					if(stoi(v[1])%2==0){
 					
+						ClientSocket c(_Lead_Port_DC1,_ip_DC1);
+						response = c.send_request(result);
+						cout<<"\nL1:The Written value is:"<<response;
+					
+					} else {
+						ClientSocket c(_Lead_Port_DC2,_ip_DC2);
+						response = c.send_request(result);
+						cout<<"\nL1:The Written value is:"<<response;
+					}
 
-					response_DC1 = response_DC1 + response_DC2;
-
-					/* m[stoi(v[1])] = stoi(v[2]) */
-					cout<<"\nL1:The Written value is:"<<response_DC1;
 				} else {
 					/* Drop the Request */
 				}
 
-				strcpy(buf, response_DC1.c_str());
+				strcpy(buf, response.c_str());
 				numbytes = sendto(sockfd,buf, strlen(buf), 0,(struct sockaddr *)&their_addr,sizeof(struct sockaddr));
        				if (numbytes  < 0) cout<<"\nFailed to send";
 			}
