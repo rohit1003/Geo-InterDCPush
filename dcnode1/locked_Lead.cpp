@@ -35,9 +35,13 @@ void _queue::writeQueue(string key,string value){
 	m.lock();
 	
 		if(!key.empty() && !value.empty()){
-			int k=stoi(key);
-			int v=stoi(value);
-			q.push(make_pair(k,v));
+			cout<<"\nInteger value is:"<<key<<".."<<value<<__LINE__<<"\n";
+			if(valid_for_stoi(key) && valid_for_stoi(value)){
+			
+				int k=stoi(key);
+				int v=stoi(value);
+				q.push(make_pair(k,v));
+			}			
 		}
 	m.unlock();
 }
@@ -51,8 +55,12 @@ void update_store(string result){
 			std::vector<string> pair = splitString(result,"#");
 			
 			if(pair.size()!=0 && !pair[0].empty() && !pair[1].empty()) {
-				store[stoi(pair[0])] = stoi(pair[1]);
-				cout<<"\nLeader node Received Changes"<<store[stoi(pair[0])];
+				cout<<"\nInteger value is:"<<pair[0]<<".."<<pair[1]<<__LINE__<<"\n";
+				
+				if(valid_for_stoi(pair[0]) && valid_for_stoi(pair[1])){
+					store[stoi(pair[0])] = stoi(pair[1]);
+					cout<<"\nLeader node Received Changes"<<store[stoi(pair[0])];
+				}
 			}
 		mtx.unlock();
 		/* Unlock Store */
@@ -72,9 +80,12 @@ void lead_to_lead_push_recv_update_store(vector<string> v){
 
 							mtx.lock();
 							
-							if(p.size()!=0 && !p[0].empty() && !p[1].empty())
-								store[stoi(p[0])] = stoi(p[1]);
-
+							if(p.size()!=0 && !p[0].empty() && !p[1].empty()){
+								cout<<"\nInteger value is:"<<p[0]<<".."<<p[1]<<__LINE__<<"\n";
+								if(valid_for_stoi(p[0]) && valid_for_stoi(p[1])){
+									store[stoi(p[0])] = stoi(p[1]);
+								}
+							}		
 							mtx.unlock();
 
 							repl_1.writeQueue(p[0],p[1]);
@@ -409,8 +420,11 @@ string Leader_read(string key,string in){
 
 	/* Lock store 	*/
 	mtx.lock();
-	if(!key.empty())							
+	if(!key.empty()){							
+		if(valid_for_stoi(key)){
 		cout<<"\nLeader: Local The Read value is:"<<store[stoi(key)];
+		}
+	}
 	mtx.unlock();
 	/* Unlock store */
 
@@ -427,8 +441,10 @@ string Leader_write(string key,string value,string in)
 	/* Lock store 	*/
 	mtx.lock();
 	if(!key.empty() && !value.empty()){
-		store[stoi(key)] = stoi(value);
-		cout<<"\nLeader: Local The Write value is:"<<store[stoi(key)];
+		if(valid_for_stoi(key) && valid_for_stoi(value)){
+			store[stoi(key)] = stoi(value);
+			cout<<"\nLeader: Local The Write value is:"<<store[stoi(key)];
+		}
 	}
 	mtx.unlock();
 	/* Unlock store */

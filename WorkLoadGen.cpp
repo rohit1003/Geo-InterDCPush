@@ -102,9 +102,10 @@ class workload{
 };
 void workload::generation(ClientSocket &c){
  
- 	int i=1;
+ 	int i=1,temp=0;
 
     int num_reads=0,num_writes=0;
+    int max_read=0,max_write=0;
     unsigned long long read_sum=0,write_sum=0;
  	
  	writeload(blob_id_count++,rand()%200,c);
@@ -112,16 +113,23 @@ void workload::generation(ClientSocket &c){
  	while(i<number_of_requests){
 
  		if( i % readWriteRatio == 0){
- 			write_sum += writeload(blob_id_count++,rand()%200,c);
+ 			temp = writeload(blob_id_count++,rand()%200,c);
+ 			max_write = max(max_write,temp);
+ 			write_sum += temp;
  			num_writes++;
  		} else {
- 			read_sum  += readload( (rand()%(blob_id_count-1)) + 1,c);
+ 			
+ 			temp = readload( (rand()%(blob_id_count-1)) + 1,c);
+ 			max_read = max(max_read,temp);
+ 			read_sum  += temp;
  			num_reads++;
  		}
  		i++;
  	}
- 	cout<<"\n The average read time for : " << num_reads << " request " << (float)read_sum/num_reads;
- 	cout<<"\n The average write time for : " << num_writes << " request " << (float)write_sum/num_writes;
+ 	cout<<"\n The average read time for : " << num_reads << " request " << 
+ 	(float)read_sum/num_reads<<"..Max Read is"<<max_read;
+ 	cout<<"\n The average write time for : " << num_writes << " request " << 
+ 	(float)write_sum/num_writes<<"..Max Write is"<<max_write;
 }
 unsigned long long time_gap(struct timeval tv){
 
